@@ -44,7 +44,7 @@ Reading a url or file line by line. Forked from [line-by-line](https://github.co
     });
 
 ### Get the total number of lines in the file
-    
+
     // import linereader
     var LineReader = require('linereader');
 
