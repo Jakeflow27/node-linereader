@@ -8,10 +8,9 @@ Reading a url or file line by line. Forked from [line-by-line](https://github.co
 - use `iconv-lite`, support more encoding
 - use `StringDecoder` when `encoding` set to `utf8`, `ascii` or `base64`
 
-### Install
+### Install and use this branch
 
-    npm install linereader
-
+    npm install Jakeflow27/node-linereader --save
 
 ### Usage
 
@@ -44,7 +43,6 @@ Reading a url or file line by line. Forked from [line-by-line](https://github.co
     });
 
 ### Get the total number of lines in the file
-
     // import linereader
     var LineReader = require('linereader');
 
@@ -52,61 +50,61 @@ Reading a url or file line by line. Forked from [line-by-line](https://github.co
     lr = new LineReader("/home/path/to/file.txt",{countTotalLines:true});
 
     // get the total lines upon the first readS
-    lr.on('line',function(line){
+    lr.on('line',function(lineNumber, line){
         console.log("total lines:", lr.totalLines);
+        var percentComplete = lineNumber/lr.totalLines; // this is usefull for CLI progress bars
     })
 
 
 ### API
+    **Class: LineReader(path [, options])**
 
-**Class: LineReader(path [, options])**
+    - `path`: a file path or url.
 
-- `path`: a file path or url.
+    - `options`: an object with the following defaults: `{encoding: 'utf8', skipEmptyLines: false}`.
 
-- `options`: an object with the following defaults: `{encoding: 'utf8', skipEmptyLines: false}`.
+    **NB:** `encoding` refer to [iconv-lite](https://github.com/ashtuchkin/iconv-lite). when encoding set to `utf8`, `ascii` or `base64`, linereader will use `StringDecoder` automatically. If `skipEmptyLines` set to `true`, empty lines don't trigger a 'line' event but still keep its `lineno`.
 
-**NB:** `encoding` refer to [iconv-lite](https://github.com/ashtuchkin/iconv-lite). when encoding set to `utf8`, `ascii` or `base64`, linereader will use `StringDecoder` automatically. If `skipEmptyLines` set to `true`, empty lines don't trigger a 'line' event but still keep its `lineno`.
+    **Event: 'line'**
 
-**Event: 'line'**
+        lr.on('line', function (lineno, line) {
+          ...
+        }
 
-    lr.on('line', function (lineno, line) {
-      ...
-    }
+    Emitted on every line read. `lineno` is the current line number, `line` contains the line without the line ending character.
 
-Emitted on every line read. `lineno` is the current line number, `line` contains the line without the line ending character.
+    **Event: 'error'**
 
-**Event: 'error'**
+        lr.on('error', function (err) {
+          ...
+        }
 
-    lr.on('error', function (err) {
-      ...
-    }
+    Emitted if an error occurred. `err` contains the error object.
 
-Emitted if an error occurred. `err` contains the error object.
+    **Event: 'end'**
 
-**Event: 'end'**
+        lr.on('end', function () {
+          ...
+        }
 
-    lr.on('end', function () {
-      ...
-    }
+    Emitted if all lines are read or after using `lr.close()`.
 
-Emitted if all lines are read or after using `lr.close()`.
+    **lr.pause()**
 
-**lr.pause()**
+    Call this method to stop emitting 'line' events.
 
-Call this method to stop emitting 'line' events.
+    **lr.resume()**
 
-**lr.resume()**
+    After calling this method, 'line' events gets emitted again.
 
-After calling this method, 'line' events gets emitted again.
+    **lr.close()**
 
-**lr.close()**
+    Stops emitting 'line' events and emits the 'end' event.
 
-Stops emitting 'line' events and emits the 'end' event.
+    ### Test
 
-### Test
+        node ./example
 
-    node ./example
+    ### License
 
-### License
-
-MIT
+    MIT
