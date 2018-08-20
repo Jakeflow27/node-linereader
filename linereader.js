@@ -29,7 +29,7 @@ function countLines(rl,callback){
     require('fs').createReadStream(rl._filepath)
         .on('data', function (chunk) {
             for (i = 0; i < chunk.length; ++i)
-                if (chunk[i] == 10)  this.totalLines++;
+                if (chunk[i] == 10)  rl.totalLines++;
         })
         .on('end', function () {
             callback(rl);

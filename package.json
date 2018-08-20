@@ -26,6 +26,6 @@
     "url": "https://github.com/nswbmw/node-linereader/issues"
   },
   "dependencies": {
-    "iconv-lite": "*"
+    "iconv-lite": "^0.4.23"
   }
 }
