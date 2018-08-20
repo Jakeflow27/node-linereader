@@ -1,18 +1,22 @@
-## linereader
-
-Reading a url or file line by line. Forked from [line-by-line](https://github.com/RustyMarvin/line-by-line), and made some improvements:
-
-- change `process.nextTick` to `setImmediate`
-- add `lineno` (number of line)
-- support `url` with the `http` or `https` prefix, case-insensitive
-- use `iconv-lite`, support more encoding
-- use `StringDecoder` when `encoding` set to `utf8`, `ascii` or `base64`
-
 ### Install and use this branch
 
     npm install Jakeflow27/node-linereader --save
 
-### Usage
+### Get total line count and read line by line
+    var LineReader = require('linereader');
+    lr = new LineReader("/home/path/to/file.txt");
+
+    lr.countLines(function(count){
+        console.log("Total lines:",count);
+        
+        lr.on('line',function(lineNumber, line){
+            console.log("total lines:", lr.totalLines);
+            var percentComplete = lineNumber/lr.totalLines; // this is usefull for CLI progress bars
+        })
+        
+    })
+
+### More Usage
 
     var LineReader = require('linereader');
     var lr = new LineReader('./linereader.js');
@@ -41,19 +45,6 @@ Reading a url or file line by line. Forked from [line-by-line](https://github.co
     lr.on('end', function () {
       console.log("End");
     });
-
-### Get the total number of lines in the file
-    // import linereader
-    var LineReader = require('linereader');
-
-    // initialize it and set countTotalLines=true
-    lr = new LineReader("/home/path/to/file.txt",{countTotalLines:true});
-
-    // get the total lines upon the first readS
-    lr.on('line',function(lineNumber, line){
-        console.log("total lines:", lr.totalLines);
-        var percentComplete = lineNumber/lr.totalLines; // this is usefull for CLI progress bars
-    })
 
 
 ### API

@@ -24,18 +24,6 @@ if (typeof setImmediate === 'undefined') {
 
 var urlProtocolRegex = /^(https?):\/\//i;
 
-function countLines(rl,callback){
-    var i;
-    require('fs').createReadStream(rl._filepath)
-        .on('data', function (chunk) {
-            for (i = 0; i < chunk.length; ++i)
-                if (chunk[i] == 10)  rl.totalLines++;
-        })
-        .on('end', function () {
-            callback(rl);
-        });
-}
-
 var LineReader = function (filepath, options) {
     var self = this;
     options = options || {};
@@ -43,7 +31,6 @@ var LineReader = function (filepath, options) {
     this._filepath = urlProtocolRegex.test(filepath) ? filepath : path.normalize(filepath);
     this._encoding = (options.encoding && iconv.encodingExists(options.encoding)) ? options.encoding : 'utf8';
     this._skipEmptyLines = options.skipEmptyLines || false;
-    this._countTotalLines = options.countTotalLines || false;
     this._readStream = null;
     this._lines = [];
     this._lineFragment = '';
@@ -53,19 +40,25 @@ var LineReader = function (filepath, options) {
     this.totalLines=0;
 
 
-    events.EventEmitter.call(this);
-    if(this._countTotalLines){
-        countLines(this,function(lr){
-            setImmediate(function () {
-                lr._initStream();
+    this.countLines = function countLines(callback){
+        self.pause();
+        var i;
+        require('fs').createReadStream(self._filepath)
+            .on('data', function (chunk) {
+                for (i = 0; i < chunk.length; ++i)
+                    if (chunk[i] == 10)  self.totalLines++;
+            })
+            .on('end', function () {
+                self.resume();
+                callback(self.totalLines);
             });
-        })
     }
-    else {
-        setImmediate(function () {
-            self._initStream();
-        });
-    }
+
+    events.EventEmitter.call(this);
+    setImmediate(function () {
+        self._initStream();
+    });
+
 
 };
 
