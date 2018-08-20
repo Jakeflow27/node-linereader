@@ -19,151 +19,175 @@ var StringDecoder = require('string_decoder').StringDecoder;
 
 // let's make sure we have a setImmediate function (node.js <0.10)
 if (typeof setImmediate === 'undefined') {
-  var setImmediate = process.nextTick;
+    var setImmediate = process.nextTick;
 }
 
-var urlProtocolRegex = /^(https?):\/\//i
+var urlProtocolRegex = /^(https?):\/\//i;
+
+function countLines(rl,callback){
+    var i;
+    require('fs').createReadStream(rl._filepath)
+        .on('data', function (chunk) {
+            for (i = 0; i < chunk.length; ++i)
+                if (chunk[i] == 10)  this.totalLines++;
+        })
+        .on('end', function () {
+            callback(rl);
+        });
+}
 
 var LineReader = function (filepath, options) {
-  var self = this;
-  options = options || {};
+    var self = this;
+    options = options || {};
 
-  this._filepath = urlProtocolRegex.test(filepath) ? filepath : path.normalize(filepath);
-  this._encoding = (options.encoding && iconv.encodingExists(options.encoding)) ? options.encoding : 'utf8';
-  this._skipEmptyLines = options.skipEmptyLines || false;
-  this._readStream = null;
-  this._lines = [];
-  this._lineFragment = '';
-  this._lineno = 0;
-  this._paused = false;
-  this._end = false;
+    this._filepath = urlProtocolRegex.test(filepath) ? filepath : path.normalize(filepath);
+    this._encoding = (options.encoding && iconv.encodingExists(options.encoding)) ? options.encoding : 'utf8';
+    this._skipEmptyLines = options.skipEmptyLines || false;
+    this._countTotalLines = options.countTotalLines || false;
+    this._readStream = null;
+    this._lines = [];
+    this._lineFragment = '';
+    this._lineno = 0;
+    this._paused = false;
+    this._end = false;
+    this.totalLines=0;
 
-  events.EventEmitter.call(this);
 
-  setImmediate(function () {
-    self._initStream();
-  });
+    events.EventEmitter.call(this);
+    if(this._countTotalLines){
+        countLines(this,function(lr){
+            setImmediate(function () {
+                lr._initStream();
+            });
+        })
+    }
+    else {
+        setImmediate(function () {
+            self._initStream();
+        });
+    }
+
 };
 
 util.inherits(LineReader, events.EventEmitter);
 
 LineReader.prototype._initStream = function () {
-  var self = this;
+    var self = this;
 
-  if (urlProtocolRegex.test(self._filepath)) {
-    var module = urlProtocolRegex.exec(self._filepath)[1].toLowerCase() // http or https
-    require(module).get(self._filepath, function (res) {
-      self._readStream = res;
-      _initStream();
-    }).on('error', function(err) {
-      console.error(err);
-    });
-  } else {
-    if (Buffer.isEncoding(this._encoding)) {
-      self._readStream = fs.createReadStream(this._filepath, {encoding: this._encoding});
+    if (urlProtocolRegex.test(self._filepath)) {
+        var module = urlProtocolRegex.exec(self._filepath)[1].toLowerCase() // http or https
+        require(module).get(self._filepath, function (res) {
+            self._readStream = res;
+            _initStream();
+        }).on('error', function(err) {
+            console.error(err);
+        });
     } else {
-      self._readStream = fs.createReadStream(this._filepath);
+        if (Buffer.isEncoding(this._encoding)) {
+            self._readStream = fs.createReadStream(this._filepath, {encoding: this._encoding});
+        } else {
+            self._readStream = fs.createReadStream(this._filepath);
+        }
+        _initStream();
     }
-    _initStream();
-  }
 
-  function _initStream() {
-    var decoderString = "";
-    var decoder;
-    if (['utf8', 'base64', 'ascii'].indexOf(self._encoding) !== -1) {
-      decoder = new StringDecoder(self._encoding);
+    function _initStream() {
+        var decoderString = "";
+        var decoder;
+        if (['utf8', 'base64', 'ascii'].indexOf(self._encoding) !== -1) {
+            decoder = new StringDecoder(self._encoding);
+        }
+        self._readStream.on('error', function (err) {
+            self.emit('error', err);
+        });
+
+        self._readStream.on('data', function (data) {
+            self._readStream.pause();
+            if (decoder) {
+                decoderString = iconv.decode(decoder.write(data), self._encoding);
+            } else {
+                decoderString = iconv.decode(data, self._encoding);
+            }
+            self._lines = self._lines.concat(decoderString.split(/(?:\n|\r\n|\r)/g));
+            self._lines[0] = self._lineFragment + self._lines[0];
+            self._lineFragment = self._lines.pop() || '';
+
+            setImmediate(function () {
+                self._nextLine();
+            });
+        });
+
+        self._readStream.on('end', function () {
+            self._end = true;
+            setImmediate(function () {
+                self._nextLine();
+            });
+        });
     }
-    self._readStream.on('error', function (err) {
-      self.emit('error', err);
-    });
-
-    self._readStream.on('data', function (data) {
-      self._readStream.pause();
-      if (decoder) {
-        decoderString = iconv.decode(decoder.write(data), self._encoding);
-      } else {
-        decoderString = iconv.decode(data, self._encoding);
-      }
-      self._lines = self._lines.concat(decoderString.split(/(?:\n|\r\n|\r)/g));
-      self._lines[0] = self._lineFragment + self._lines[0];
-      self._lineFragment = self._lines.pop() || '';
-
-      setImmediate(function () {
-        self._nextLine();
-      });
-    });
-
-    self._readStream.on('end', function () {
-      self._end = true;
-      setImmediate(function () {
-        self._nextLine();
-      });
-    });
-  }
 
 };
 
 LineReader.prototype._nextLine = function () {
-  var self = this, line;
-  self._lineno = self._lineno + 1;
-  if (this._end && !!this._lineFragment) {
-    self._lineno = self._lineno - 1;
-    this.emit('line', self._lineno, this._lineFragment);
-    this._lineFragment = '';
+    var self = this, line;
+    self._lineno = self._lineno + 1;
+    if (this._end && !!this._lineFragment) {
+        self._lineno = self._lineno - 1;
+        this.emit('line', self._lineno, this._lineFragment);
+        this._lineFragment = '';
+
+        if (!this._paused) {
+            setImmediate(function () {
+                self.emit('end');
+            });
+        }
+        return;
+    }
+
+    if (this._paused) {
+        return;
+    }
+
+    if (this._lines.length === 0) {
+        if (this._end) {
+            this.emit('end');
+        } else {
+            this._readStream.resume();
+        }
+        return;
+    }
+
+    line = this._lines.shift();
+
+    if (!this._skipEmptyLines || line.length > 0) {
+        this.emit('line', self._lineno, line);
+    }
 
     if (!this._paused) {
-      setImmediate(function () {
-        self.emit('end');
-      });
+        setImmediate(function () {
+            self._nextLine();
+        });
     }
-    return;
-  }
-
-  if (this._paused) {
-    return;
-  }
-
-  if (this._lines.length === 0) {
-    if (this._end) {
-      this.emit('end');
-    } else {
-      this._readStream.resume();
-    }
-    return;
-  }
-
-  line = this._lines.shift();
-
-  if (!this._skipEmptyLines || line.length > 0) {
-    this.emit('line', self._lineno, line);
-  }
-
-  if (!this._paused) {
-    setImmediate(function () {
-      self._nextLine();
-    });
-  }
 };
 
 LineReader.prototype.pause = function () {
-  this._paused = true;
+    this._paused = true;
 };
 
 LineReader.prototype.resume = function () {
-  var self = this;
-  this._paused = false;
-  setImmediate(function () {
-    self._nextLine();
-  });
+    var self = this;
+    this._paused = false;
+    setImmediate(function () {
+        self._nextLine();
+    });
 };
 
 LineReader.prototype.close = function () {
-  var self = this;
-  this._readStream.destroy();
-  this._end = true;
-  setImmediate(function () {
-    self._nextLine();
-  });
+    var self = this;
+    this._readStream.destroy();
+    this._end = true;
+    setImmediate(function () {
+        self._nextLine();
+    });
 };
 
 module.exports = LineReader;
