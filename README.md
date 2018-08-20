@@ -44,9 +44,18 @@ Reading a url or file line by line. Forked from [line-by-line](https://github.co
     });
 
 ### Get the total number of lines in the file
+    
+    // import linereader
     var LineReader = require('linereader');
+
+    // initialize it and set countTotalLines=true
     lr = new LineReader("/home/path/to/file.txt",{countTotalLines:true});
-    var totalLines = lr.totalLines; // counts the total lines on the initial read
+
+    // get the total lines upon the first readS
+    lr.on('line',function(line){
+        console.log("total lines:", lr.totalLines);
+    })
+
 
 ### API
 
