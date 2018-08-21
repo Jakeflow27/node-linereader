@@ -4,9 +4,11 @@
 
 ### Get total line count and read line by line
     var LineReader = require('linereader');
-    lr = new LineReader("/home/path/to/file.txt");
+    
+    lr = new LineReader("/home/path/to/file.txt",{startPaused:true});
 
     lr.countLines(function(count){
+    
         console.log("Total lines:",count);
         
         lr.on('line',function(lineNumber, line){
@@ -14,6 +16,12 @@
             var percentComplete = lineNumber/lr.totalLines; // this is usefull for CLI progress bars
         })
         
+        lr.on('end',function(){
+            console.log('end of file');
+            // fin
+        });
+        
+        lr.resume();
     })
 
 ### More Usage

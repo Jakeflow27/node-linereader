@@ -35,7 +35,7 @@ var LineReader = function (filepath, options) {
     this._lines = [];
     this._lineFragment = '';
     this._lineno = 0;
-    this._paused = false;
+    this._paused = options.startPaused || false;
     this._end = false;
     this.totalLines=0;
 
