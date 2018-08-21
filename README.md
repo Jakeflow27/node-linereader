@@ -1,6 +1,6 @@
 ### Install and use this branch
 
-    sudo npm install Jakeflow27/node-linereader --save
+    npm install Jakeflow27/node-linereader --save
 
 ### Get total line count and read line by line
     var LineReader = require('linereader');
